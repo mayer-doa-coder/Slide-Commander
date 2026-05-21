@@ -1,0 +1,31 @@
+# ── Vosk model ────────────────────────────────────────────────────────────────
+# Large binary (~1.8 GB). Download instructions are in research_log.md Section 2.2.
+vosk-model-*/
+
+# ── Recorded test audio ───────────────────────────────────────────────────────
+# Personal voice recordings — not reproducible by others, not needed in repo.
+test_audio/
+
+# ── Benchmark output ──────────────────────────────────────────────────────────
+# Generated files — re-created by running the benchmark script.
+results.json
+keyboard_test_results.json
+qr_test_results.json
+websocket_results.json
+*.qr.png
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── OS noise ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
