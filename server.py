@@ -14,7 +14,7 @@ import socket
 import time
 from typing import Callable, Optional
 
-from flask import Flask, request, send_from_directory, session
+from flask import Flask, request, send_from_directory
 from flask_socketio import SocketIO, emit
 
 import keyboard
@@ -64,16 +64,12 @@ def index():
 
 @socketio.on("connect")
 def handle_connect():
-    sid = request.sid
-    print(f"  [WS] client connected    sid={sid}")
-    if _config and _config.pin_enabled:
-        session["authenticated"] = False
+    print(f"  [WS] client connected    sid={request.sid}")
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
-    sid = request.sid
-    print(f"  [WS] client disconnected sid={sid}")
+    print(f"  [WS] client disconnected sid={request.sid}")
 
 
 @socketio.on("command")
@@ -82,14 +78,6 @@ def handle_command(data: dict):
     Client → Server.  Schema: docs/ws_protocol.md §1.
     Validates action, calls keyboard callback, emits ack.
     """
-    if _config and _config.pin_enabled and not session.get("authenticated"):
-        emit("error", {
-            "code":    "not_authenticated",
-            "message": "PIN required. Please authenticate before sending commands.",
-            "ts":      _now_ms(),
-        })
-        return
-
     action = data.get("action", "")
     source = data.get("source", "button")
     client_ts = data.get("ts")
@@ -113,32 +101,6 @@ def handle_command(data: dict):
 
     emit("ack", ack_payload)
     print(f"  [CMD] {action:<6s}  source={source}  ts={server_ts}")
-
-
-@socketio.on("auth")
-def handle_auth(data: dict):
-    """
-    Client → Server.  Schema: docs/ws_protocol.md §4.
-    Validates PIN; grants or denies session access.
-    """
-    if not (_config and _config.pin_enabled):
-        # PIN mode off — auth event is a no-op; just ack
-        emit("ack", {"action": "auth_ok", "source": "server", "ts": _now_ms()})
-        return
-
-    submitted = data.get("pin", "")
-    if not isinstance(submitted, str) or submitted != _config.pin:
-        emit("error", {
-            "code":    "wrong_pin",
-            "message": "Incorrect PIN. Please try again.",
-            "ts":      _now_ms(),
-        })
-        print(f"  [AUTH] failed pin attempt sid={request.sid}")
-        return
-
-    session["authenticated"] = True
-    emit("ack", {"action": "auth_ok", "source": "server", "ts": _now_ms()})
-    print(f"  [AUTH] authenticated     sid={request.sid}")
 
 
 # ── Public API ────────────────────────────────────────────────────────────────

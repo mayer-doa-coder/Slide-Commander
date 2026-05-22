@@ -23,16 +23,14 @@ def build_parser() -> argparse.ArgumentParser:
         prog="slidecommander",
         description="SlideCommander — offline voice + phone presentation remote",
     )
-    p.add_argument("--port",     type=int,  default=5000,                    metavar="PORT",
-                   help="HTTP server port (default: 5000, range: 1024-65535)")
-    p.add_argument("--model",    type=str,  default="tiny",                  metavar="SIZE",
-                   help="Whisper model size: tiny | base | small (default: tiny)")
-    p.add_argument("--pin",      type=str,  default=None,                    metavar="PIN",
-                   help="4-digit PIN to lock the remote UI (e.g. --pin 1234)")
-    p.add_argument("--no-voice", action="store_true",
-                   help="Disable microphone / voice recognition entirely")
+    p.add_argument("--port",      type=int, default=5000, metavar="PORT",
+                   help="Specify the port for the local web server (default: 5000).")
+    p.add_argument("--model",     type=str, default="tiny", metavar="SIZE",
+                   help="Set the faster-whisper model size (e.g., tiny, base, small). Defaults to 'tiny'.")
+    p.add_argument("--no-voice",  action="store_true",
+                   help="Disable the voice recognition module to save memory and CPU.")
     p.add_argument("--list-mics", action="store_true",
-                   help="Print available audio input devices and exit")
+                   help="Display a numbered list of all available audio input devices and exit.")
     return p
 
 
@@ -51,7 +49,6 @@ def main() -> None:
     cfg = Config(
         port=args.port,
         model_path=args.model,
-        pin=args.pin,
         no_voice=args.no_voice,
     )
 
@@ -66,7 +63,6 @@ def main() -> None:
     print("=" * 34)
     print(f"  URL:   {url}")
     print(f"  Voice: {'OFF' if cfg.no_voice else 'ON'}")
-    print(f"  PIN:   {'enabled' if cfg.pin_enabled else 'disabled'}")
     print(f"  Model: {cfg.model_path}")
     print("=" * 34)
     print("  Open the URL on your phone (same Wi-Fi).")
