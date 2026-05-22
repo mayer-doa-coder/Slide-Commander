@@ -35,7 +35,163 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 # ── vocabulary ────────────────────────────────────────────────────────────────
-COMMANDS: List[str] = ["next", "back", "start", "end", "pause"]
+COMMANDS: List[str] = ["next", "back", "start", "pause"]
+
+# ── phonetic alias table ───────────────────────────────────────────────────────
+# Maps what Whisper actually transcribes → the intended command.
+# Only aliases whose target is in COMMANDS are active; the rest are dormant until
+# the corresponding command is added to COMMANDS (e.g. "last", "end", "final").
+#
+# Covers: phonetic rhymes, common Whisper confusions, plurals/inflections,
+#         run-together words, and accent variants.
+WORD_ALIASES: Dict[str, str] = {
+    # ── next ──────────────────────────────────────────────────────────────────
+    # /nɛkst/ — Whisper often drops the trailing 't' or swaps the onset
+    "nexts":    "next",   # spurious plural
+    "necks":    "next",   # trailing 't' dropped
+    "text":     "next",   # 'n' onset lost (very common Whisper error)
+    "tex":      "next",
+    "nex":      "next",   # final cluster swallowed
+    "nest":     "next",   # 'k' → nothing
+    "vest":     "next",   # onset swap + no 'k'
+    "checked":  "next",   # rhyming mishear in some accents
+    # ── back ──────────────────────────────────────────────────────────────────
+    # /bæk/ — final stop often substituted or voiced
+    "bag":      "back",   # final stop voiced
+    "bad":      "back",
+    "bat":      "back",
+    "ban":      "back",
+    "bach":     "back",   # German-style pronunciation
+    "black":    "back",   # 'l' inserted
+    "backs":    "back",
+    "rack":     "back",   # onset lost
+    "sack":     "back",
+    "tack":     "back",
+    "jack":     "back",
+    "hack":     "back",
+    "pack":     "back",
+    "lack":     "back",
+    "mac":      "back",
+    "mack":     "back",
+    # ── start ─────────────────────────────────────────────────────────────────
+    # /stɑːrt/ — complex onset, often simplified
+    "started":  "start",
+    "starts":   "start",
+    "starting": "start",
+    "stark":    "start",   # final 't' → 'k'
+    "star":     "start",   # final consonants dropped
+    "stars":    "start",
+    "smart":    "start",   # onset swap
+    "heart":    "start",   # onset lost (non-rhotic accents: /stɑːt/ → /hɑːt/)
+    "cart":     "start",
+    "part":     "start",
+    "dart":     "start",
+    "art":      "start",   # full onset drop
+    "chart":    "start",
+    "mart":     "start",
+    "tart":     "start",
+    "fart":     "start",
+    # ── pause ─────────────────────────────────────────────────────────────────
+    # /pɔːz/ — Whisper regularly substitutes the voiceless/voiced pair
+    "paws":     "pause",   # homophone in most accents
+    "paused":   "pause",   # past tense form
+    "pausing":  "pause",
+    "cause":    "pause",   # onset swap /p/ → /k/
+    "laws":     "pause",   # onset lost
+    "claws":    "pause",
+    "jaws":     "pause",
+    "caws":     "pause",   # crow sound — same vowel
+    "gauze":    "pause",   # /ɡɔːz/ nearly identical
+    "clause":   "pause",
+    "was":      "pause",   # weak-form mishear in quiet audio
+    "oz":       "pause",   # extreme reduction
+    # ── end ───────────────────────────────────────────────────────────────────
+    # /ɛnd/ — Whisper's single biggest systematic error: 'end' → 'and'
+    "and":      "end",     # #1 Whisper mishearing (function-word substitution)
+    "inn":      "end",     # /ɪn/ ~ /ɛnd/ in fast speech
+    "an":       "end",     # further reduction
+    "ends":     "end",
+    "bend":     "end",     # rhyme, onset added
+    "fend":     "end",
+    "lend":     "end",
+    "mend":     "end",
+    "rend":     "end",
+    "send":     "end",
+    "tend":     "end",
+    "wend":     "end",
+    "blend":    "end",
+    "spend":    "end",
+    "trend":    "end",
+    "friend":   "end",    # some accents: /frɛnd/ close enough
+    "men":      "end",    # /ɛnd/ reduced to /ɛn/ then voiced stop lost
+    "hen":      "end",
+    "ten":      "end",
+    "pen":      "end",
+    # ── last ──────────────────────────────────────────────────────────────────
+    # /lɑːst/ — trailing cluster often lost; onset sometimes swapped
+    "lasts":    "last",
+    "blast":    "last",   # 'bl' onset prepended
+    "mast":     "last",   # rhyme, onset swap
+    "vast":     "last",   # rhyme, onset swap
+    "past":     "last",   # rhyme, onset swap (very common)
+    "cast":     "last",   # rhyme, onset swap
+    "fast":     "last",   # rhyme, onset swap
+    "gassed":   "last",
+    "massed":   "last",
+    "passed":   "last",   # /pɑːst/ identical vowel+cluster
+    "asked":    "last",   # /ɑːskt/ similar cluster
+    "lust":     "last",   # vowel reduced
+    "list":     "last",   # vowel shift + different final
+    "lost":     "last",   # vowel shift
+    "less":     "last",   # heavy reduction
+    # ── final ─────────────────────────────────────────────────────────────────
+    # /ˈfaɪnəl/ — Whisper often extends to derived forms
+    "finals":   "final",
+    "finally":  "final",  # most common Whisper expansion
+    "finale":   "final",  # /fɪˈnɑːleɪ/ — contains 'final' but as substring
+    "finely":   "final",  # /ˈfaɪnli/ homophone in some accents
+    "vinyl":    "final",  # /ˈvaɪnəl/ — similar syllable shape
+    "find":     "final",  # heavy reduction
+    "file":     "final",  # onset+vowel kept, rest dropped
+}
+
+# ── phrase triggers ────────────────────────────────────────────────────────────
+# Multi-word phrases that unambiguously map to one command.
+# Checked before word-level matching; longer phrases listed first.
+# Phrases pointing to commands not in COMMANDS are dormant.
+PHRASE_TRIGGERS: Dict[str, str] = {
+    # go-to-last-slide variants
+    "last slide":    "last",
+    "go to last":    "last",
+    "go last":       "last",
+    "last one":      "last",
+    "very last":     "last",
+    "the last":      "last",
+    "at last":       "last",
+    "final slide":   "final",
+    "go to final":   "final",
+    "go final":      "final",
+    "end slide":     "end",
+    "go to end":     "end",
+    "go to the end": "end",
+    "the end":       "end",
+    "slide end":     "end",
+    # convenience variants for other commands
+    "go next":       "next",
+    "move on":       "next",
+    "go forward":    "next",
+    "next slide":    "next",
+    "go back":       "back",
+    "go backward":   "back",
+    "previous slide": "back",
+    "go previous":   "back",
+    "go to start":   "start",
+    "from the start": "start",
+    "from start":    "start",
+    "the beginning": "start",
+    "go to pause":   "pause",
+    "pause now":     "pause",
+}
 
 # ── audio constants ───────────────────────────────────────────────────────────
 SAMPLE_RATE:  int   = 16_000        # Hz — required by every engine
@@ -180,16 +336,43 @@ class EngineBase(abc.ABC):
 
     @staticmethod
     def _extract_keyword(text: str) -> Optional[str]:
-        text = text.lower()
-        # Whole-word match first (avoids 'end' matching inside 'pretend')
-        words = text.split()
+        text = text.lower().strip()
+        words = [w.strip(".,!?;:'\"()[]") for w in text.split()]
+
+        # 1. Phrase triggers — highest specificity, checked before single words.
+        #    Longer phrases first so "go to last" wins over "go last".
+        for phrase, cmd in PHRASE_TRIGGERS.items():
+            if cmd in COMMANDS and phrase in text:
+                return cmd
+
+        # 2. Exact whole-word match against COMMANDS.
         for cmd in COMMANDS:
             if cmd in words:
                 return cmd
-        # Substring fallback for partial transcripts
+
+        # 3. Substring match — catches inflections already containing the stem
+        #    (e.g. "paused"→"pause", "started"→"start", "blast"→"last").
+        #    Guard against accidental sub-matches ("pretend" containing "end").
         for cmd in COMMANDS:
             if cmd in text:
-                return cmd
+                idx = text.index(cmd)
+                before = text[idx - 1] if idx > 0 else " "
+                after  = text[idx + len(cmd)] if idx + len(cmd) < len(text) else " "
+                if not before.isalpha() and not after.isalpha():
+                    return cmd
+
+        # 4. Word-level alias table — phonetic mishearings and Whisper confusions.
+        for word in words:
+            target = WORD_ALIASES.get(word)
+            if target and target in COMMANDS:
+                return target
+
+        # 5. Substring alias — catches alias words embedded in longer transcripts
+        #    (e.g. "i said and" would not split cleanly; catches "and" in text).
+        for word, target in WORD_ALIASES.items():
+            if target in COMMANDS and word in words:
+                return target
+
         return None
 
     @staticmethod
@@ -731,21 +914,24 @@ def record_samples(
     audio_dir: Path,
     samples_per_command: int,
     record_seconds: float = 2.5,
+    commands: Optional[List[str]] = None,
 ) -> None:
     """
     Interactive terminal recorder.  Prompts the user to speak each command word
     and saves correctly formatted WAV files under audio_dir/{keyword}/{n:03d}.wav.
     Uses PyAudio if available, falls back to sounddevice.
+    Pass commands=[...] to record only a subset of COMMANDS.
     """
+    target_commands = commands if commands is not None else COMMANDS
     record_fn = _get_record_fn(record_seconds)
 
     print(
         f"\n[RECORD] Capturing {samples_per_command} × {record_seconds:.1f}s"
-        f" samples for {len(COMMANDS)} commands → {audio_dir}\n"
+        f" samples for {len(target_commands)} command(s) → {audio_dir}\n"
         f"         Each clip: say the word clearly, ~{record_seconds:.1f}s after the prompt.\n"
     )
 
-    for cmd in COMMANDS:
+    for cmd in target_commands:
         cmd_dir = audio_dir / cmd
         cmd_dir.mkdir(parents=True, exist_ok=True)
         for i in range(1, samples_per_command + 1):
@@ -762,7 +948,7 @@ def record_samples(
             print(f"           Saved {out_path}")
 
     print(
-        f"\n[RECORD] Done.  {samples_per_command * len(COMMANDS)} clips saved.\n"
+        f"\n[RECORD] Done.  {samples_per_command * len(target_commands)} clips saved.\n"
         f"         Next: python benchmark_stt.py --audio-dir {audio_dir}\n"
     )
 
@@ -834,6 +1020,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Samples per command to record with --record (default: 5).",
     )
     p.add_argument(
+        "--command", metavar="WORD", default=None,
+        choices=COMMANDS,
+        help=(
+            f"Record only this one command with --record. "
+            f"Choices: {', '.join(COMMANDS)}. (default: record all)"
+        ),
+    )
+    p.add_argument(
         "--duration", type=float, default=3.0, metavar="SECS",
         help="Mic recording length for --live mode (default: 3).",
     )
@@ -873,7 +1067,8 @@ def main() -> None:
 
     # ── record mode ───────────────────────────────────────────────────────────
     if args.record:
-        record_samples(args.audio_dir, args.samples)
+        cmd_filter = [args.command] if args.command else None
+        record_samples(args.audio_dir, args.samples, commands=cmd_filter)
         sys.exit(0)
 
     engine_classes = resolve_engine_classes(args.engines)

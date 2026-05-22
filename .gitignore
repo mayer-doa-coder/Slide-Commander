@@ -9,10 +9,15 @@ test_audio/
 # ── Benchmark output ──────────────────────────────────────────────────────────
 # Generated files — re-created by running the benchmark script.
 results.json
+results_base.json
+bench_out.txt
+bench_base.txt
+bench_err.txt
 keyboard_test_results.json
 qr_test_results.json
 websocket_results.json
 *.qr.png
+qr_test.png
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/

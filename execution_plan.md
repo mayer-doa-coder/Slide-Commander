@@ -40,12 +40,12 @@ last_updated: 2026-05-15
   - *Acceptance Criteria:* Measured round-trip latency ≤100ms confirmed and logged.
   - *Script delivered 2026-05-15:* `benchmark_websocket.py` — localhost mode (no phone needed) and LAN server/client mode. Run: `pip install flask flask-socketio simple-websocket && python benchmark_websocket.py`. Copy results into `research_log.md` Section 4.2.
 
-- [ ] **1.4** Evaluate `qrcode` library for terminal ASCII QR output quality.
+- [x] **1.4** Evaluate `qrcode` library for terminal ASCII QR output quality.
   - *Dependency:* None.
   - *Acceptance Criteria:* QR code scannable by at least two mobile OS cameras from terminal output.
   - *Script delivered 2026-05-15:* `test_qrcode.py` — generates ASCII QR + PNG, prompts iOS/Android scan confirmation, saves `qr_test_results.json`. Run: `pip install qrcode pillow && python test_qrcode.py`. Copy results into `research_log.md` Section 4.3.
 
-- [ ] **1.5** Document all findings in `research_log.md`.
+- [x] **1.5** Document all findings in `research_log.md`.
   - *Dependency:* Tasks 1.1–1.4 complete.
   - *Acceptance Criteria:* `research_log.md` committed to repo; all technical assumptions confirmed or flagged as risks.
   - *Blocked by:* 1.1 (run benchmark + fill Section 3), 1.2 (fill Section 4.1), 1.3 (fill Section 4.2), 1.4 (fill Section 4.3), then complete Section 5 Winner Declaration.
