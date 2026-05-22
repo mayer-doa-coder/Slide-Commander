@@ -1,0 +1,27 @@
+# SlideCommander — Python dependencies
+# Install with: pip install -r requirements.txt
+#
+# Note: pyaudio and vosk are incompatible with Python 3.14.
+# faster-whisper (CTranslate2 Whisper int8) was selected in Phase 1 as the STT engine.
+# sounddevice replaces pyaudio for cross-platform audio capture.
+
+# ── Web server ─────────────────────────────────────────────────────────────────
+flask>=3.0
+flask-socketio>=5.0
+simple-websocket>=1.0        # WebSocket transport backend for Flask-SocketIO
+
+# ── Keyboard simulation ────────────────────────────────────────────────────────
+pyautogui>=0.9.54
+
+# ── Speech recognition ─────────────────────────────────────────────────────────
+faster-whisper>=1.0          # CTranslate2 Whisper int8 — offline STT engine
+
+# ── Audio capture ─────────────────────────────────────────────────────────────
+sounddevice>=0.4             # Cross-platform mic capture (replaces pyaudio)
+
+# ── QR code generation ─────────────────────────────────────────────────────────
+qrcode>=7.0
+Pillow>=10.0                 # Required by qrcode for image output
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+psutil>=5.9                  # System resource monitoring (memory delta in benchmarks)

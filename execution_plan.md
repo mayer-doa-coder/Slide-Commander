@@ -87,21 +87,25 @@ last_updated: 2026-05-15
 
 **Goal:** Flask server serving static UI, WebSocket hub operational.
 
-- [ ] **3.1.1** Scaffold repo structure: `main.py`, `server.py`, `keyboard.py`, `voice.py`, `qr_display.py`, `config.py`, `static/index.html`, `requirements.txt`.
+- [x] **3.1.1** Scaffold repo structure: `main.py`, `server.py`, `keyboard.py`, `voice.py`, `qr_display.py`, `config.py`, `static/index.html`, `requirements.txt`.
   - *Dependency:* Phase 2 complete.
   - *Acceptance Criteria:* All files exist; `python main.py` starts without import errors.
+  - *Completed 2026-05-22:* All 8 files created. DAG layer order respected: config→keyboard/qr_display→voice/server→main. voice.py uses faster-whisper+sounddevice (Phase 1 validated stack, not vosk+pyaudio which fail on Python 3.14). `python main.py` runs cleanly — prints port/voice/PIN status and exits.
 
-- [ ] **3.1.2** Implement `server.py` with Flask + Flask-SocketIO: HTTP server on configurable port, static file serving, WebSocket `connect`/`disconnect`/`command` event handlers.
+- [x] **3.1.2** Implement `server.py` with Flask + Flask-SocketIO: HTTP server on configurable port, static file serving, WebSocket `connect`/`disconnect`/`command` event handlers.
   - *Dependency:* Task 3.1.1.
   - *Acceptance Criteria:* Browser on same LAN loads `index.html` at `http://<local-ip>:<port>`; WebSocket echo test returns `ack` within 100ms.
+  - *Completed 2026-05-22:* Full server.py implemented — `connect`/`disconnect`/`command`/`auth` handlers, PIN session auth, `broadcast_voice_event()`, `start_server()` binding to `0.0.0.0`. LAN-verified by stakeholder: page loaded at `http://192.168.0.170:5000`, "SlideCommander" heading confirmed in browser.
 
-- [ ] **3.1.3** Implement local IP auto-detection in `server.py` using stdlib `socket` (see Algorithm 10.3 in source).
+- [x] **3.1.3** Implement local IP auto-detection in `server.py` using stdlib `socket` (see Algorithm 10.3 in source).
   - *Dependency:* Task 3.1.2.
   - *Acceptance Criteria:* Detected IP matches the machine's LAN IP (not 127.0.0.1); logged to console on startup.
+  - *Completed 2026-05-22:* `get_local_ip()` added to `server.py` — UDP connect trick per Algorithm 10.3. Returns `192.168.0.170` (verified, not 127.0.0.1). Logged as `[SERVER] LAN IP detected: <ip>` on startup. `main.py` updated to call `server.get_local_ip()` instead of inline socket block.
 
-- [ ] **3.1.4** Implement startup logging: print server URL and voice mode status to terminal.
+- [x] **3.1.4** Implement startup logging: print server URL and voice mode status to terminal.
   - *Dependency:* Task 3.1.3.
   - *Acceptance Criteria:* Console output clearly shows `http://<ip>:<port>` and `Voice: ON/OFF` within 2 seconds of launch.
+  - *Completed 2026-05-22:* Banner prints in `main.py` immediately after `Config` init, before any blocking call. Shows `=== SlideCommander ===`, `URL: http://192.168.0.170:5000`, `Voice: ON/OFF`, `PIN: enabled/disabled`, `Model: tiny`. `sys.stdout.flush()` called after banner. `--model` default corrected from Vosk path to `"tiny"`. Verified: banner appears instantly for both `--no-voice` and `--no-voice --pin 1234`.
 
 ---
 
@@ -109,21 +113,25 @@ last_updated: 2026-05-15
 
 **Goal:** Phone button presses correctly simulate keyboard events on the host OS.
 
-- [ ] **3.2.1** Implement `keyboard.py` with a `command → key` mapping dictionary (`next→right`, `back→left`, `first→ctrl+home`, `last→ctrl+end`).
+- [x] **3.2.1** Implement `keyboard.py` with a `command → key` mapping dictionary (`next→right`, `back→left`, `first→ctrl+home`, `last→ctrl+end`).
   - *Dependency:* Phase 3.1 complete.
   - *Acceptance Criteria:* `keyboard.execute('next')` calls `pyautogui.press('right')` (verified with mock).
+  - *Completed 2026-05-22:* `keyboard.py` implemented — `_KEY_MAP` maps all 5 actions; `execute()` calls `pyautogui.hotkey()` for modified keys and `pyautogui.press()` for simple keys; `pause` is a no-op (timer handled by UI). `ValueError` raised for unknown actions.
 
-- [ ] **3.2.2** Handle platform differences: `ctrl` vs `cmd` for macOS first/last slide shortcuts.
+- [x] **3.2.2** Handle platform differences: `ctrl` vs `cmd` for macOS first/last slide shortcuts.
   - *Dependency:* Task 3.2.1.
   - *Acceptance Criteria:* `platform.system()` check routes to correct modifier key on each OS.
+  - *Completed 2026-05-22:* `_MODIFIER = "command" if platform.system() == "Darwin" else "ctrl"` — macOS uses Command key, Windows/Linux use Ctrl. `first` and `last` entries in `_KEY_MAP` use `_MODIFIER` at import time.
 
-- [ ] **3.2.3** Write unit tests (`tests/test_keyboard.py`) with mock key-press capture for all actions including invalid input (UT-01, UT-02).
+- [x] **3.2.3** Write unit tests (`tests/test_keyboard.py`) with mock key-press capture for all actions including invalid input (UT-01, UT-02).
   - *Dependency:* Task 3.2.2.
   - *Acceptance Criteria:* `pytest tests/test_keyboard.py` passes 100%; `ValueError` raised for unknown action.
+  - *Completed 2026-05-22:* `tests/test_keyboard.py` written — 27 tests across 3 classes: `TestExecuteValid` (5 actions + parametrized), `TestExecuteInvalid` (10 bad inputs + error message content, UT-02), `TestPlatformModifier` (macOS/Windows/Linux routing). All 27 pass.
 
-- [ ] **3.2.4** Wire `keyboard.execute()` into the server's WebSocket `command` handler (Algorithm 10.2 in source).
+- [x] **3.2.4** Wire `keyboard.execute()` into the server's WebSocket `command` handler (Algorithm 10.2 in source).
   - *Dependency:* Tasks 3.1.2, 3.2.3.
   - *Acceptance Criteria:* WebSocket message `{action: "next"}` from browser causes `pyautogui.press('right')` on host.
+  - *Completed 2026-05-22:* Already wired in Task 3.1.2 — `server.py` calls `_keyboard_callback(action)` in `handle_command()`; `main.py` passes `keyboard_callback=keyboard.execute` to `start_server()`. No changes needed.
 
 ---
 
