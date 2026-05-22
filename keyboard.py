@@ -10,11 +10,6 @@ from __future__ import annotations
 
 import platform
 
-import pyautogui
-
-# Disable the PyAutoGUI fail-safe corner (can be re-enabled via config in future)
-pyautogui.FAILSAFE = False
-
 # macOS uses the Command key for first/last slide; Windows and Linux use Ctrl.
 _MODIFIER = "command" if platform.system() == "Darwin" else "ctrl"
 
@@ -38,6 +33,8 @@ def execute(action: str) -> None:
     if not key:
         return  # pause has no OS key — handled by the UI timer
 
+    import pyautogui
+    pyautogui.FAILSAFE = False
     if modifier:
         pyautogui.hotkey(modifier, key)
     else:
