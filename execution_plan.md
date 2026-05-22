@@ -56,25 +56,30 @@ last_updated: 2026-05-15
 
 **Goal:** Produce all design artifacts before implementation begins.
 
-- [ ] **2.1** Design the module dependency graph (which module imports which).
+- [x] **2.1** Design the module dependency graph (which module imports which).
   - *Dependency:* Phase 1 complete.
   - *Acceptance Criteria:* Dependency diagram saved as `docs/module_diagram.md` or equivalent; no circular imports.
+  - *Completed 2026-05-22:* `docs/module_diagram.md` created. 6-module layered DAG designed: `config` (leaf) → `keyboard`/`qr_display` → `voice`/`server` → `main`. Topological ordering verified; zero circular imports. `voice.py` calls `keyboard.py` directly (no server import); callbacks injected by `main.py` to avoid back-edges.
 
-- [ ] **2.2** Wire-frame the mobile remote UI — button layout, timer position, voice indicator.
+- [x] **2.2** Wire-frame the mobile remote UI — button layout, timer position, voice indicator.
   - *Dependency:* None.
   - *Acceptance Criteria:* Wire-frame image or ASCII mockup committed; reviewed by at least one stakeholder.
+  - *Completed 2026-05-22:* `docs/ui_wireframe.md` created. High-fidelity ASCII mockup with header/status dot, 48px monospace timer, voice indicator (ON/OFF/ERR states), 96px primary BACK+NEXT buttons, 64px secondary FIRST+LAST buttons, command echo strip, footer. Full design spec: dark palette (slate-900 base, blue-500 accents), typography table, sizing table, tap feedback, WCAG AA contrast notes. Approved by stakeholder.
 
-- [ ] **2.3** Define the WebSocket message protocol (JSON schema for all message types: `command`, `ack`, `error`, `auth`).
+- [x] **2.3** Define the WebSocket message protocol (JSON schema for all message types: `command`, `ack`, `error`, `auth`).
   - *Dependency:* Task 2.1.
   - *Acceptance Criteria:* Protocol schema documented in `docs/ws_protocol.md`; all message types listed with field definitions.
+  - *Completed 2026-05-22:* `docs/ws_protocol.md` created. 4 event types fully specified: `command` (client→server, 5 allowed actions), `ack` (server→client, echoes action + ts + optional latency_ms), `error` (server→client, 6 error codes), `auth` (client→server, 4-digit PIN string). Includes flow diagrams for normal, voice, PIN auth, wrong PIN, and unknown action paths. Server + client handler skeletons included.
 
-- [ ] **2.4** Write the `Config` dataclass (`config.py`) with all defaults and validation (port, model path, pin, no-voice flag).
+- [x] **2.4** Write the `Config` dataclass (`config.py`) with all defaults and validation (port, model path, pin, no-voice flag).
   - *Dependency:* Task 2.3.
   - *Acceptance Criteria:* `config.py` passes unit tests for valid and invalid inputs (FR-06, NFR-05).
+  - *Completed 2026-05-22:* `config.py` implemented — `@dataclass` with `port` (int, 1024–65535), `model_path` (str), `pin` (Optional[str], 4-digit regex), `no_voice` (bool), `server_url` property, `pin_enabled` property. `tests/test_config.py` written — 32 tests covering defaults, valid overrides, boundary ports, wrong-type ports (str/float/bool), short/long/alpha/integer PINs. All 32 pass.
 
-- [ ] **2.5** Create project `README.md` with setup instructions and prerequisites.
+- [x] **2.5** Create project `README.md` with setup instructions and prerequisites.
   - *Dependency:* Tasks 2.1–2.4.
   - *Acceptance Criteria:* README covers install, launch command, QR scan flow, and voice setup.
+  - *Completed 2026-05-22:* `README.md` created. Covers: Prerequisites (Python 3.9+, same-LAN Wi-Fi, macOS Accessibility note), Installation (venv + pip commands), Quick Start (launch → QR scan → button table), Voice Control Setup (faster-whisper offline, first-run download, accuracy tips), CLI flags (--port, --model, --pin, --no-voice, --list-mics), project structure tree, and troubleshooting section.
 
 ---
 
