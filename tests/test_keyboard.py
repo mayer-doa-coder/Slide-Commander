@@ -7,7 +7,6 @@ Platform detection is also patched so modifier-key routing is testable.
 
 from __future__ import annotations
 
-import platform
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -37,20 +36,17 @@ class TestExecuteValid:
             keyboard.execute("back")
             mp.assert_called_once_with("left")
 
-    def test_first_uses_hotkey_with_modifier(self):
-        with patch("pyautogui.hotkey") as mh, patch("pyautogui.press"):
+    def test_first_presses_home(self):
+        with patch("pyautogui.press") as mp, patch("pyautogui.hotkey") as mh:
             keyboard.execute("first")
-            # modifier is platform-dependent; just check the key argument
-            assert mh.call_count == 1
-            args = mh.call_args[0]
-            assert args[-1] == "home"
+            mp.assert_called_once_with("home")
+            mh.assert_not_called()
 
-    def test_last_uses_hotkey_with_modifier(self):
-        with patch("pyautogui.hotkey") as mh, patch("pyautogui.press"):
+    def test_last_presses_end(self):
+        with patch("pyautogui.press") as mp, patch("pyautogui.hotkey") as mh:
             keyboard.execute("last")
-            assert mh.call_count == 1
-            args = mh.call_args[0]
-            assert args[-1] == "end"
+            mp.assert_called_once_with("end")
+            mh.assert_not_called()
 
     def test_pause_sends_no_key(self):
         with patch("pyautogui.press") as mp, patch("pyautogui.hotkey") as mh:
@@ -97,45 +93,3 @@ class TestExecuteInvalid:
             for allowed in ("next", "back", "first", "last", "pause"):
                 assert allowed in msg
 
-
-# ── Platform modifier routing ─────────────────────────────────────────────────
-
-class TestPlatformModifier:
-    def test_macos_uses_command(self):
-        with patch("platform.system", return_value="Darwin"):
-            import importlib
-            import keyboard as kb_mod
-            importlib.reload(kb_mod)
-            assert kb_mod._MODIFIER == "command"
-
-    def test_windows_uses_ctrl(self):
-        with patch("platform.system", return_value="Windows"):
-            import importlib
-            import keyboard as kb_mod
-            importlib.reload(kb_mod)
-            assert kb_mod._MODIFIER == "ctrl"
-
-    def test_linux_uses_ctrl(self):
-        with patch("platform.system", return_value="Linux"):
-            import importlib
-            import keyboard as kb_mod
-            importlib.reload(kb_mod)
-            assert kb_mod._MODIFIER == "ctrl"
-
-    def test_first_on_macos_sends_command_home(self):
-        with patch("platform.system", return_value="Darwin"):
-            import importlib
-            import keyboard as kb_mod
-            importlib.reload(kb_mod)
-            with patch("pyautogui.hotkey") as mh, patch("pyautogui.press"):
-                kb_mod.execute("first")
-                mh.assert_called_once_with("command", "home")
-
-    def test_last_on_windows_sends_ctrl_end(self):
-        with patch("platform.system", return_value="Windows"):
-            import importlib
-            import keyboard as kb_mod
-            importlib.reload(kb_mod)
-            with patch("pyautogui.hotkey") as mh, patch("pyautogui.press"):
-                kb_mod.execute("last")
-                mh.assert_called_once_with("ctrl", "end")

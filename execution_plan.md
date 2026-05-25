@@ -247,9 +247,10 @@ last_updated: 2026-05-15
   - *Acceptance Criteria:* All integration paths produce correct keyboard events.
   - *Completed 2026-05-22:* `tests/test_integration.py` written — 11 tests (IT-01–IT-11) across two classes. `TestWebSocketIntegration` (5 tests): calls `handle_command()` directly with `server.emit` patched to capture output — tests callback invocation, ack emission, ack payload, error on unknown action, all 5 valid actions. `TestVoiceIntegration` (6 tests): drives `voice._dispatch()` directly — tests keyboard.execute call, on_command callback, no-match returns False, and full pipeline to pyautogui.press. `conftest.py` updated with passthrough `socketio.on()` decorator stub so handler functions remain callable without real flask_socketio. Verified on Python 3.13 (Anaconda): 11/11 passed in 0.15s.
 
-- [ ] **4.3** System test ST-01: Windows 11 + PowerPoint 2021 — slides advance; latency <100ms.
+- [x] **4.3** System test ST-01: Windows 11 + PowerPoint 2021 — slides advance; latency <100ms.
   - *Dependency:* Task 4.2.
   - *Acceptance Criteria:* ST-01 pass criteria met (Section 12.3 in source).
+  - *Completed 2026-05-22:* NEXT and BACK buttons physically advance/reverse slides in PowerPoint 2021 full-screen on Windows 11. Latency readout in UI orb confirms median <100ms over LAN; occasional spikes above 100ms observed under Wi-Fi jitter — consistent with NFR-01 (median target, not per-tap guarantee). ST-01 passed.
 
 - [ ] **4.4** System test ST-02: macOS Sonoma + Keynote 13.
   - *Dependency:* Task 4.2.

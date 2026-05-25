@@ -8,17 +8,14 @@ All slide actions from both server.py and voice.py route through here.
 
 from __future__ import annotations
 
-import platform
-
-# macOS uses the Command key for first/last slide; Windows and Linux use Ctrl.
-_MODIFIER = "command" if platform.system() == "Darwin" else "ctrl"
-
 # Command → (key, modifier) mapping.  Modifier is None when not needed.
+# Google Slides (and most presentation software) uses bare Home/End in presentation mode.
+# Ctrl+Home/End are text-editor shortcuts that do NOT navigate slides.
 _KEY_MAP: dict[str, tuple[str, str | None]] = {
     "next":  ("right", None),
     "back":  ("left",  None),
-    "first": ("home",  _MODIFIER),
-    "last":  ("end",   _MODIFIER),
+    "first": ("home",  None),
+    "last":  ("end",   None),
     "pause": ("",      None),   # pause is a timer toggle — no key sent to OS
 }
 

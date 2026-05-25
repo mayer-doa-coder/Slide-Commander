@@ -25,7 +25,7 @@ _BLOCK_DURATION_S = 0.5
 _BLOCK_SAMPLES = int(_SAMPLE_RATE * _BLOCK_DURATION_S)
 _WINDOW_BLOCKS = 4          # 2-second audio window per Whisper call
 _STEP_BLOCKS = 2            # slide by 1 s — inference runs every ~1 s
-_COMMAND_COOLDOWN_S = 0.5   # 500 ms debounce (Algorithm 10.1)
+_COMMAND_COOLDOWN_S = 1.5   # must exceed step interval (1.0 s) to prevent overlap-window duplicates
 
 _PUNCT_RE = re.compile(r"[^\w\s]")  # strip everything that isn't a word char or space
 

@@ -694,15 +694,31 @@ socket.on('ack', data => {
 });
 
 // ── Slide commands ─────────────────────────────────────────────────────────
+const _lastCmdTime = {};
+function _sendCmd(action) {
+  const now = Date.now();
+  if (now - (_lastCmdTime[action] || 0) < 350) return false;
+  _lastCmdTime[action] = now;
+  orbFlash(action);
+  addHistory(action);
+  socket.emit('command', { action, source: 'button', ts: now });
+  return true;
+}
 document.querySelectorAll('.cmd-btn').forEach(btn => {
-  btn.addEventListener('click', e => {
-    const action = btn.dataset.action;
-    addRipple(e);
-    orbFlash(action);
-    addHistory(action);
-    socket.emit('command', { action, source: 'button', ts: Date.now() });
-  });
+  // touchstart: immediate visual ripple so the button feels instant
   btn.addEventListener('touchstart', addRipple, { passive: true });
+  // touchend: send the command, then preventDefault() stops the browser
+  // from synthesising a ghost 'click' event ~300 ms later (the main cause
+  // of double-firing on mobile).
+  btn.addEventListener('touchend', e => {
+    e.preventDefault();
+    _sendCmd(btn.dataset.action);
+  });
+  // click: handles desktop (mouse) and any non-touch device
+  btn.addEventListener('click', e => {
+    addRipple(e);
+    _sendCmd(btn.dataset.action);
+  });
 });
 </script>
 </body>
