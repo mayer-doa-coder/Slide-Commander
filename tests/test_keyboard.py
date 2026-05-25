@@ -54,9 +54,15 @@ class TestExecuteValid:
             mp.assert_not_called()
             mh.assert_not_called()
 
-    @pytest.mark.parametrize("action", ["next", "back", "first", "last", "pause"])
+    def test_goto_slide_types_number_and_presses_enter(self):
+        with patch("pyautogui.typewrite") as mt, patch("pyautogui.press") as mp:
+            keyboard.execute("goto:5")
+            mt.assert_called_once_with("5", interval=0.05)
+            mp.assert_called_once_with("enter")
+
+    @pytest.mark.parametrize("action", ["next", "back", "first", "last", "pause", "goto:5"])
     def test_all_valid_actions_do_not_raise(self, action):
-        with patch("pyautogui.press"), patch("pyautogui.hotkey"):
+        with patch("pyautogui.press"), patch("pyautogui.hotkey"), patch("pyautogui.typewrite"):
             keyboard.execute(action)  # must not raise
 
 

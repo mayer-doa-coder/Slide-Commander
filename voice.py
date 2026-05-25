@@ -28,6 +28,7 @@ _STEP_BLOCKS = 2            # slide by 1 s — inference runs every ~1 s
 _COMMAND_COOLDOWN_S = 1.5   # must exceed step interval (1.0 s) to prevent overlap-window duplicates
 
 _PUNCT_RE = re.compile(r"[^\w\s]")  # strip everything that isn't a word char or space
+_GOTO_SLIDE_RE = re.compile(r"\bgo(?:\s*to)?\s+slide\s+(\d+)\b")
 
 # Voice phrase → SlideCommander action.  Multi-word phrases checked via subset match.
 _KEYWORD_MAP: dict[str, str] = {
@@ -65,6 +66,21 @@ def _dispatch(
     Returns True if a command was dispatched, False if suppressed or not found.
     Exposed at module level so unit tests can drive it directly.
     """
+    match = _GOTO_SLIDE_RE.search(text)
+    if match:
+        command = f"goto:{match.group(1)}"
+        now = time.time()
+        since = now - last_command_time.get(command, now - _COMMAND_COOLDOWN_S)
+        if since < _COMMAND_COOLDOWN_S:
+            print("  [VOICE] Ignored (debouncing)")
+            return False
+        last_command_time[command] = now
+        print(f"  [VOICE] Command detected: GO TO SLIDE {match.group(1)}")
+        keyboard.execute(command)
+        if on_command:
+            on_command(command)
+        return True
+
     word_set = set(text.split())
     for keyword, command in _KEYWORD_MAP.items():
         if all(w in word_set for w in keyword.split()):

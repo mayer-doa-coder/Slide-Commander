@@ -1,3 +1,4 @@
+8
 """
 Flask + Flask-SocketIO server module — Layer 2 of the dependency DAG.
 
@@ -115,7 +116,10 @@ def broadcast_voice_event(action: str) -> None:
         "source": "voice",
         "ts":     _now_ms(),
     })
-    print(f"  [VOICE] broadcast {action}")
+    print(f"  [VOICE] broadcast {action}")6
+    6
+
+6
 
 
 def start_server(cfg: Config, keyboard_callback: Optional[Callable[[str], None]] = None) -> None:
