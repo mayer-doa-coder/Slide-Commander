@@ -260,9 +260,10 @@ last_updated: 2026-05-15
   - *Dependency:* Task 4.2.
   - *Acceptance Criteria:* ST-03 pass criteria met.
 
-- [ ] **4.6** System test ST-04: Windows 11 + Google Slides (Chrome).
+- [x] **4.6** System test ST-04: Windows 11 + Google Slides (Chrome).
   - *Dependency:* Task 4.2.
   - *Acceptance Criteria:* ST-04 pass criteria met.
+  - *Completed 2026-05-25:* Verified on Windows 11 + Chrome. Fixed two bugs uncovered during testing: (1) `first`/`last` remapped from `Ctrl+Home`/`Ctrl+End` to bare `Home`/`End` — Google Slides presentation mode does not respond to the Ctrl variants; (2) voice cooldown raised from 0.5 s to 1.5 s to suppress duplicate dispatches caused by the 1-second sliding audio window overlap. All navigation commands (next, back, first, last) confirmed working.
 
 - [ ] **4.7** System test ST-05: macOS + PDF (Preview).
   - *Dependency:* Task 4.2.
