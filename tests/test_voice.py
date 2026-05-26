@@ -14,7 +14,7 @@ import pytest
 import voice
 
 
-# ── UT-03: 500 ms debounce — same command twice within 200 ms fires once ───────
+# ── UT-03: 1500 ms debounce — same command twice within 200 ms fires once ───────
 
 class TestDebounce:
     def test_ut03_same_command_200ms_fires_once(self):
@@ -30,14 +30,14 @@ class TestDebounce:
         callback.assert_called_once()
 
     def test_same_command_after_cooldown_fires_twice(self):
-        """Commands separated by > 500 ms must both fire."""
+        """Commands separated by > 1500 ms must both fire."""
         callback = MagicMock()
         state: dict[str, float] = {}
 
-        with patch("voice.time.time", side_effect=[0.0, 0.6]), \
+        with patch("voice.time.time", side_effect=[0.0, 1.6]), \
              patch("voice.keyboard.execute"):
             voice._dispatch("next", state, callback)   # t=0.000 — fires
-            voice._dispatch("next", state, callback)   # t=0.600 — fires again
+            voice._dispatch("next", state, callback)   # t=1.600 — fires again
 
         assert callback.call_count == 2
 
@@ -85,6 +85,20 @@ class TestDebounce:
             voice._dispatch("start", state, None)   # "start" maps to "first"
 
         mock_exec.assert_called_once_with("first")
+
+    @pytest.mark.parametrize("phrase", ["go to slide 5", "go slide 5", "goto slide 5"])
+    def test_go_to_slide_dispatches_goto_action(self, phrase):
+        """The phrase 'go to slide N' must dispatch a numeric goto action."""
+        callback = MagicMock()
+        state: dict[str, float] = {}
+
+        with patch("voice.time.time", return_value=0.0), \
+             patch("voice.keyboard.execute") as mock_exec:
+            result = voice._dispatch(phrase, state, callback)
+
+        assert result is True
+        mock_exec.assert_called_once_with("goto:5")
+        callback.assert_called_once_with("goto:5")
 
     def test_punctuation_in_text_does_not_block_detection(self):
         """_dispatch receives already-cleaned text, but extra punctuation should not break it."""

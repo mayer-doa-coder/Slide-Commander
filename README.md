@@ -92,6 +92,7 @@ SlideCommander listens to your laptop's microphone and responds to these spoken 
 |---|---|
 | `"next"` | Next slide |
 | `"back"` | Previous slide |
+| `"go to slide N"` / `"goto slide N"` | Jump to slide N |
 | `"start"` | Jump to first slide |
 | `"pause"` | Toggle presentation timer |
 
