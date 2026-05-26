@@ -269,19 +269,19 @@ last_updated: 2026-05-15
   - *Dependency:* Task 4.2.
   - *Acceptance Criteria:* ST-05 pass criteria met.
 
-- [ ] **4.8** Voice accuracy test ST-06: 20 utterances per keyword; target ≥19/20 correct.
+- [x] **4.8** Voice accuracy test ST-06: 20 utterances per keyword; target ≥19/20 correct.
   - *Dependency:* Task 4.2.
   - *Acceptance Criteria:* ≥95% recognition rate per keyword across all 5 keywords.
 
-- [ ] **4.9** Latency benchmark: measure button-tap to key-event time; confirm <100ms on LAN (NFR-01).
+- [x] **4.9** Latency benchmark: measure button-tap to key-event time; confirm <100ms on LAN (NFR-01).
   - *Dependency:* Tasks 4.3–4.6.
   - *Acceptance Criteria:* Median latency <100ms; 95th percentile <150ms.
 
-- [ ] **4.10** User acceptance test: 3 real presenters use system in a live lecture/meeting setting.
+- [x] **4.10** User acceptance test: 3 real presenters use system in a live lecture/meeting setting.
   - *Dependency:* Tasks 4.3–4.8.
   - *Acceptance Criteria:* All 3 testers complete a full presentation without system failure; feedback documented.
 
-- [ ] **4.11** Fix all bugs identified in Tasks 4.1–4.10.
+- [x] **4.11** Fix all bugs identified in Tasks 4.1–4.10.
   - *Dependency:* Tasks 4.1–4.10.
   - *Acceptance Criteria:* Zero open P1/P2 bugs; all test cases re-run green after fixes.
 
