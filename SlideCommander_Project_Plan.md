@@ -232,6 +232,40 @@ Every component of SlideCommander relies on well-established, stable Python libr
 - The system SHALL debounce voice commands (500ms minimum gap) to prevent accidental double-advance.
 - Voice recognition mode SHALL be togglable via a command-line flag: `--no-voice`.
 
+#### FR-04-SS: "Slide N" Voice Shorthand
+
+- The system SHALL accept the shorthand phrase "slide N" (e.g., "slide 5") as a direct navigation command, equivalent to "go to slide N".
+- The full "go to slide N" and "go slide N" forms SHALL continue to work unchanged.
+- A bare "slide" with no digit SHALL NOT trigger any command.
+
+#### FR-04-WW: Wake-Word Gate (opt-in)
+
+- When launched with `--wake-word`, the system SHALL ignore all voice commands until the phrase "Hey Slide" is detected.
+- After activation, the gate SHALL remain open for 30 seconds from the last recognised speech; if no further speech is detected within that window, the system SHALL return to sleep and require a new wake phrase.
+- Without the `--wake-word` flag, the system SHALL behave as before (always listening) — this is the default.
+- The startup banner SHALL display `Wake: 'Hey Slide'` when wake-word mode is active.
+
+#### FR-02-SWP: Swipe Gestures
+
+- The mobile UI SHALL detect horizontal swipe gestures anywhere outside the control dock.
+- A leftward swipe SHALL trigger the NEXT command; a rightward swipe SHALL trigger the BACK command.
+- Swipes that originate on a button element SHALL be ignored so the control dock remains unaffected.
+- A brief haptic pulse (30 ms) SHALL fire on the phone when a swipe is recognised, before the server ACK.
+- The `source` field in the resulting WebSocket command SHALL be `"swipe"`.
+
+#### FR-02-SLD: Slide Number Display
+
+- The mobile UI SHALL display the current slide number in the control dock, updated after every navigation command.
+- The counter SHALL initialise to `—` on page load and update to the server-reported slide number on the first ACK.
+- The server SHALL track a best-effort slide counter: `next` increments, `back` decrements (min 1), `first` resets to 1, `goto:N` sets to N.
+- For the `last` command the server SHALL omit the `slide` field from the ACK (total slide count is unknown); the UI SHALL leave the display unchanged.
+
+#### FR-02-HAP: Haptic Feedback on Voice Match
+
+- When a voice command ACK is received (`source: "voice"`), the phone SHALL vibrate for 50 ms via `navigator.vibrate(50)`.
+- Browsers that do not support the Vibration API (iOS Safari, desktop) SHALL degrade silently — no error, no UI change.
+- Button-press ACKs (`source: "button"`) and swipe ACKs (`source: "swipe"`) SHALL NOT trigger the 50 ms haptic pulse.
+
 ### FR-05: QR Code & Discovery
 
 - The terminal output SHALL display a scannable QR code within 2 seconds of launch.
@@ -676,6 +710,8 @@ If SlideCommander is later packaged for commercial distribution:
 
 ## 16.1 Short-Term (v1.1 – v1.2)
 
+- ~~"Slide N" voice shorthand~~ **Implemented in v1.0 (FR-04-SS):** saying "slide 5" navigates directly without the "go to" prefix.
+- ~~Wake-word gate~~ **Implemented in v1.0 (FR-04-WW):** `--wake-word` flag gates all commands behind "Hey Slide" to prevent false positives.
 - Laser pointer simulation: use the phone's gyroscope to move the mouse cursor as a virtual pointer.
 - Slide thumbnail preview: display the current slide number and a thumbnail on the phone UI using OS screenshots.
 - Multi-language voice models: swap Vosk models for French, Spanish, German keyword sets.

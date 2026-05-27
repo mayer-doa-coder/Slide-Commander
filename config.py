@@ -26,6 +26,7 @@ class Config:
     port: int = 5000
     model_path: str = "tiny"
     no_voice: bool = False
+    wake_word: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.port, int) or isinstance(self.port, bool):

@@ -1,7 +1,7 @@
 ---
 type: execution_plan
 related_source: SlideCommander_Project_Plan.md
-last_updated: 2026-05-15
+last_updated: 2026-05-27
 ---
 
 > **AI SYSTEM DIRECTIVE (CRITICAL):**
@@ -169,6 +169,16 @@ last_updated: 2026-05-15
   - *Acceptance Criteria:* `python main.py --no-voice` starts without loading PyAudio or Vosk.
   - *Completed 2026-05-22:* `main.py` `--no-voice` flag sets `cfg.no_voice=True`; `if not cfg.no_voice:` guard skips `voice.start_listening()` entirely. Heavy imports (`sounddevice`, `faster_whisper`) are lazy inside `_worker()` so they are never touched.
 
+- [x] **3.3.7** Extend `_GOTO_SLIDE_RE` to match "Slide N" shorthand without "go to" prefix (FR-04-SS).
+  - *Dependency:* Task 3.3.2.
+  - *Acceptance Criteria:* Saying "slide 5" dispatches `goto:5`; existing "go to slide N" variants still work; `_dispatch("slide", ...)` returns False (no number → no match).
+  - *Completed 2026-05-26:* `_GOTO_SLIDE_RE` changed from `r"\bgo(?:\s*to)?\s+slide\s+(\d+)\b"` to `r"\b(?:go(?:\s*to)?\s+)?slide\s+(\d+)\b"` — makes the "go to" prefix optional. 5 new tests added to `tests/test_voice.py` (`TestDebounce`): shorthand parametrize case "slide 5" added to existing test; `test_slide_shorthand_various_numbers` (3 cases); `test_slide_without_number_does_not_dispatch`. All 96 tests pass.
+
+- [x] **3.3.8** Implement wake-word gate: voice commands only fire after "Hey Slide" is detected (FR-04-WW).
+  - *Dependency:* Task 3.3.6.
+  - *Acceptance Criteria:* With `--wake-word` flag, commands are ignored until "Hey Slide" is spoken; gate times out after 30 s of silence; default behaviour (no flag) is unchanged.
+  - *Completed 2026-05-26:* Added `_WAKE_RE = re.compile(r"\bhey\s+slide\b")` and `_WAKE_TIMEOUT_S = 30.0` to `voice.py`. `_worker()` tracks `is_awake` / `last_wake_time` state; gate activates only when `cfg.wake_word` is True (opt-in). `config.py` gains `wake_word: bool = False` field; `main.py` exposes `--wake-word` CLI flag and prints `Wake: 'Hey Slide'` in startup banner. `TestWakeWordRegex` class (8 tests) added to `tests/test_voice.py`. All 96 tests pass.
+
 ---
 
 ## Phase 3.4: Mobile Remote UI (Week 8)
@@ -199,6 +209,21 @@ last_updated: 2026-05-15
   - *Dependency:* Tasks 3.4.1–3.4.4.
   - *Acceptance Criteria:* All buttons tap-responsive and layout correct on each browser without install.
   - *Completed 2026-05-22:* Full adaptive layout implemented via CSS custom properties + `clamp()` + `svh` units + media queries. Triple height fallback: `100vh` → `100svh` (excludes browser chrome, best for mobile) → `100dvh` (updates as chrome shows/hides). All key dimensions fluid: orb size `clamp(140px, 44vmin, 196px)`, nav buttons `clamp(68px, 10.5svh, 88px)`, seg bar `clamp(44px, 6.5svh, 56px)`, font sizes, padding, and gaps all scale with viewport. Four media-query breakpoints: landscape phone (<500px height) — orb shrinks to 32vh, sub-text hidden; compact portrait (500–720px) — reduced orb/buttons/gaps for small phones (iPhone SE); tablet (≥600px) — content centered, max-width 540px, rounded dock; desktop (≥900px) — further constrained to 480px. Browser compat: `-webkit-backdrop-filter`, `-webkit-tap-highlight-color`, `touch-action: manipulation`, `overscroll-behavior: none`, `user-select: none`. All features supported Chrome 69+ / Firefox 83+ / Safari 12.1+.
+
+- [x] **3.4.6** Add swipe gestures: swipe left → next slide, swipe right → back (FR-02-SWP).
+  - *Dependency:* Task 3.4.2.
+  - *Acceptance Criteria:* Horizontal swipe anywhere outside the control dock advances or reverses the slide; swipes on buttons are ignored; `source: "swipe"` appears in the ACK payload.
+  - *Completed 2026-05-27:* IIFE swipe handler attached to `document` via `touchstart`/`touchend`. Swipes starting on a `<button>` (checked via `e.target.closest('button')`) are ignored so the control dock is unaffected. Threshold: ≥60 px horizontal, horizontal component ≥1.5× vertical component. Fires `_sendCmd(action, 'swipe')` — `_sendCmd` updated to accept optional `source` parameter (default `'button'`). Brief 30 ms haptic pulse (`navigator.vibrate(30)`) on swipe detection. `{ passive: true }` on both listeners for scroll performance.
+
+- [x] **3.4.7** Add slide number display: show current slide number in the control dock, updated on every ACK (FR-02-SLD).
+  - *Dependency:* Tasks 3.4.2, 3.1.2.
+  - *Acceptance Criteria:* Slide counter shows `—` on load; updates to correct slide number after every navigation command; `last` action leaves counter unchanged (total slide count unknown).
+  - *Completed 2026-05-27:* `_slide_counter` module-level int added to `server.py`; `_update_slide_counter(action)` updates it for `next` (+1), `back` (−1, min 1), `first` (→1), `goto:N` (→N); returns `None` for `last` so the field is omitted from the ACK. `slide` field included in all button-command ACKs and voice broadcast ACKs. UI: `.slide-row` div with `SLIDE` label and `#slide-num` (Space Mono, blue glow) placed in the control dock between the timer row and seg-bar. JS reads `data.slide` on every ACK and updates `#slide-num`. Counter resets to 1 on `start_server()`. 105 tests still pass.
+
+- [x] **3.4.8** Add haptic feedback on voice command match: `navigator.vibrate(50)` on voice ACK (FR-02-HAP).
+  - *Dependency:* Tasks 3.3.4, 3.4.2.
+  - *Acceptance Criteria:* Phone vibrates for 50 ms when a voice command ACK arrives with `source: "voice"`; button presses do not trigger the vibration; browsers that do not support `navigator.vibrate` degrade silently.
+  - *Completed 2026-05-27:* `navigator.vibrate(50)` called inside `socket.on('ack')` when `data.source === 'voice'`. Guard `if (navigator.vibrate)` ensures silent fallback on iOS Safari and desktop. Voice ACKs also now trigger `orbFlash(data.action)` and `addHistory(data.action)` so the orb and command history update identically to button presses. `orbFlash` updated to handle `goto:N` actions (displays "SLIDE N") and the new `open`/`close` entries added to `ICONS`/`LABELS` maps.
 
 ---
 

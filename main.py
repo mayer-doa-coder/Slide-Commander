@@ -29,6 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Set the faster-whisper model size (e.g., tiny, base, small). Defaults to 'tiny'.")
     p.add_argument("--no-voice",  action="store_true",
                    help="Disable the voice recognition module to save memory and CPU.")
+    p.add_argument("--wake-word", action="store_true",
+                   help="Require 'Hey Slide' before commands are accepted. Prevents false positives.")
     p.add_argument("--list-mics", action="store_true",
                    help="Display a numbered list of all available audio input devices and exit.")
     return p
@@ -50,6 +52,7 @@ def main() -> None:
         port=args.port,
         model_path=args.model,
         no_voice=args.no_voice,
+        wake_word=args.wake_word,
     )
 
     # ── Startup banner — printed before ANY blocking operation ───────────────
@@ -63,6 +66,8 @@ def main() -> None:
     print("=" * 34)
     print(f"  URL:   {url}")
     print(f"  Voice: {'OFF' if cfg.no_voice else 'ON'}")
+    if not cfg.no_voice and cfg.wake_word:
+        print(f"  Wake:  ON / OFF")
     print(f"  Model: {cfg.model_path}")
     print("=" * 34)
     print("  Open the URL on your phone (same Wi-Fi).")

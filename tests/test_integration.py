@@ -78,11 +78,12 @@ class TestWebSocketIntegration:
     def test_it05_all_valid_actions_invoke_callback(self, ws_env):
         """IT-05: every allowed action reaches the keyboard callback."""
         mock_cb, _ = ws_env
-        for action in ("next", "back", "first", "last", "pause"):
+        all_actions = ("next", "back", "first", "last", "pause", "open", "close")
+        for action in all_actions:
             server.handle_command({"action": action, "source": "button"})
-        assert mock_cb.call_count == 5
-        dispatched = [c.args[0] for c in mock_cb.call_args_list]
-        assert set(dispatched) == {"next", "back", "first", "last", "pause"}
+        assert mock_cb.call_count == len(all_actions)
+        dispatched = set(c.args[0] for c in mock_cb.call_args_list)
+        assert dispatched == set(all_actions)
 
 
 # ── Pipeline B: voice._dispatch → keyboard.execute → pyautogui ───────────────

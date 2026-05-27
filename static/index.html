@@ -397,6 +397,22 @@
       .ctrl-dock { max-width: 480px; }
       header, .voice-strip, .viz-area { max-width: 480px; }
     }
+
+    /* ── Slide number row ───────────────────────────────────────────────────── */
+    .slide-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .slide-label {
+      font-size: .6rem; font-weight: 700; letter-spacing: .14em; color: #334155;
+    }
+    .slide-num {
+      font-family: 'Space Mono', monospace; font-size: .85rem; font-weight: 700;
+      color: #60a5fa; text-shadow: 0 0 12px rgba(96,165,250,.3); min-width: 2ch;
+    }
+    .slide-swipe-hint {
+      margin-left: auto; font-size: .55rem; letter-spacing: .06em; color: #1e293b;
+    }
+    @media (max-height: 499px) { .slide-swipe-hint { display: none; } }
   </style>
 </head>
 <body>
@@ -457,6 +473,13 @@
     <span id="timer-display">00:00</span>
     <button class="btn-t" id="btn-ts" onclick="timerToggle()">START</button>
     <button class="btn-t" onclick="timerReset()">RESET</button>
+  </div>
+
+  <!-- Slide number + swipe hint -->
+  <div class="slide-row">
+    <span class="slide-label">SLIDE</span>
+    <span id="slide-num" class="slide-num">—</span>
+    <span class="slide-swipe-hint">← swipe to advance →</span>
   </div>
 
   <!-- FIRST / LAST segmented ghost bar -->
@@ -591,8 +614,8 @@ function timerReset() {
 }
 
 // ── Orb feedback ───────────────────────────────────────────────────────────
-const ICONS = { next:'→', back:'←', first:'«', last:'»', pause:'⏸', default:'◈' };
-const LABELS = { next:'NEXT', back:'BACK', first:'FIRST', last:'LAST', pause:'PAUSE' };
+const ICONS = { next:'→', back:'←', first:'«', last:'»', pause:'⏸', open:'▶', close:'⏹', default:'◈' };
+const LABELS = { next:'NEXT', back:'BACK', first:'FIRST', last:'LAST', pause:'PAUSE', open:'OPEN', close:'CLOSE' };
 let _orbTimeout;
 
 function orbFlash(action) {
@@ -600,6 +623,11 @@ function orbFlash(action) {
   const icon  = document.getElementById('orb-icon');
   const cmd   = document.getElementById('orb-cmd');
   const sub   = document.getElementById('orb-sub');
+
+  // Resolve display strings — goto:N gets its own label
+  const isGoto = action.startsWith('goto:');
+  const displayIcon  = isGoto ? ICONS.default : (ICONS[action]  || ICONS.default);
+  const displayLabel = isGoto ? ('SLIDE ' + action.slice(5)) : (LABELS[action] || action.toUpperCase());
 
   // Emit pulse rings
   for (let i=0; i<2; i++) {
@@ -610,10 +638,10 @@ function orbFlash(action) {
     p.addEventListener('animationend', ()=>p.remove());
   }
 
-  icon.textContent = ICONS[action] || ICONS.default;
+  icon.textContent = displayIcon;
   icon.style.color = '#93c5fd';
   icon.style.textShadow = '0 0 20px rgba(96,165,250,.7)';
-  cmd.textContent  = LABELS[action] || action.toUpperCase();
+  cmd.textContent  = displayLabel;
   sub.textContent  = '';
 
   clearTimeout(_orbTimeout);
@@ -681,27 +709,38 @@ function _voiceIdle() {
   document.querySelectorAll('.wb').forEach(b => b.classList.add('paused'));
 }
 
+const $slideNum = document.getElementById('slide-num');
+
 socket.on('ack', data => {
   if (data.latency_ms != null) $lat.textContent = data.latency_ms + 'ms';
+
+  // Slide counter — update whenever server sends a reliable slide number
+  if (data.slide != null) $slideNum.textContent = data.slide;
+
   if (data.source === 'voice') {
+    // Haptic pulse on voice match so the presenter feels confirmation
+    if (navigator.vibrate) navigator.vibrate(50);
     $micdot.classList.add('active');
     $vstate.textContent = 'ON'; $vstate.classList.add('active');
     $vcmd.textContent = data.action.toUpperCase();
     document.querySelectorAll('.wb').forEach(b => b.classList.remove('paused'));
     clearTimeout(_voiceIdleTimer);
     _voiceIdleTimer = setTimeout(_voiceIdle, 5000);
+    // Mirror orb + history for voice commands the same as button presses
+    orbFlash(data.action);
+    addHistory(data.action);
   }
 });
 
 // ── Slide commands ─────────────────────────────────────────────────────────
 const _lastCmdTime = {};
-function _sendCmd(action) {
+function _sendCmd(action, source = 'button') {
   const now = Date.now();
   if (now - (_lastCmdTime[action] || 0) < 350) return false;
   _lastCmdTime[action] = now;
   orbFlash(action);
   addHistory(action);
-  socket.emit('command', { action, source: 'button', ts: now });
+  socket.emit('command', { action, source, ts: now });
   return true;
 }
 document.querySelectorAll('.cmd-btn').forEach(btn => {
@@ -720,6 +759,33 @@ document.querySelectorAll('.cmd-btn').forEach(btn => {
     _sendCmd(btn.dataset.action);
   });
 });
+
+// ── Swipe gestures ─────────────────────────────────────────────────────────
+// Swipe left → next slide; swipe right → back.
+// Ignores swipes that start on a button so the control dock is unaffected.
+(function () {
+  const SWIPE_MIN_PX  = 60;   // minimum horizontal distance to qualify
+  const SWIPE_RATIO   = 1.5;  // horizontal must dominate vertical by this ratio
+  let _sx = 0, _sy = 0, _armed = false;
+
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) { _armed = false; return; }
+    _sx = e.touches[0].clientX;
+    _sy = e.touches[0].clientY;
+    _armed = true;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!_armed) return;
+    _armed = false;
+    const dx = e.changedTouches[0].clientX - _sx;
+    const dy = e.changedTouches[0].clientY - _sy;
+    if (Math.abs(dx) >= SWIPE_MIN_PX && Math.abs(dx) >= Math.abs(dy) * SWIPE_RATIO) {
+      if (navigator.vibrate) navigator.vibrate(30); // brief haptic on swipe detect
+      _sendCmd(dx < 0 ? 'next' : 'back', 'swipe');
+    }
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>

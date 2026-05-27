@@ -86,9 +86,13 @@ class TestDebounce:
 
         mock_exec.assert_called_once_with("first")
 
-    @pytest.mark.parametrize("phrase", ["go to slide 5", "go slide 5", "goto slide 5"])
+    @pytest.mark.parametrize("phrase", [
+        "slide 5",
+        "please slide 5",
+        "go to slide 5",    # still matches because it contains "slide 5"
+    ])
     def test_go_to_slide_dispatches_goto_action(self, phrase):
-        """The phrase 'go to slide N' must dispatch a numeric goto action."""
+        """'slide N' is the canonical trigger; any phrase containing 'slide N' dispatches goto:N."""
         callback = MagicMock()
         state: dict[str, float] = {}
 
@@ -99,6 +103,28 @@ class TestDebounce:
         assert result is True
         mock_exec.assert_called_once_with("goto:5")
         callback.assert_called_once_with("goto:5")
+
+    @pytest.mark.parametrize("phrase,slide", [
+        ("slide 1",  "1"),
+        ("slide 12", "12"),
+        ("slide 100", "100"),
+    ])
+    def test_slide_shorthand_various_numbers(self, phrase, slide):
+        """'slide N' must dispatch goto:N for any digit sequence."""
+        state: dict[str, float] = {}
+        with patch("voice.time.time", return_value=0.0), \
+             patch("voice.keyboard.execute") as mock_exec:
+            result = voice._dispatch(phrase, state, None)
+        assert result is True
+        mock_exec.assert_called_once_with(f"goto:{slide}")
+
+    def test_slide_without_number_does_not_dispatch(self):
+        """'slide' alone (no digit) must not dispatch anything."""
+        state: dict[str, float] = {}
+        with patch("voice.keyboard.execute") as mock_exec:
+            result = voice._dispatch("slide", state, None)
+        assert result is False
+        mock_exec.assert_not_called()
 
     def test_punctuation_in_text_does_not_block_detection(self):
         """_dispatch receives already-cleaned text, but extra punctuation should not break it."""
@@ -111,3 +137,25 @@ class TestDebounce:
             result = voice._dispatch("next", state, callback)
 
         assert result is True
+
+
+# ── Wake-word regex tests (FR-04-WW) ──────────────────────────────────────────
+
+class TestWakeWordRegex:
+    """Verify _WAKE_RE / _SLEEP_RE match ON and OFF as whole words."""
+
+    @pytest.mark.parametrize("phrase", ["on", "voice on", "turn on"])
+    def test_wake_on_matches(self, phrase):
+        assert voice._WAKE_RE.search(phrase) is not None
+
+    @pytest.mark.parametrize("phrase", ["onto", "only", "gone", "bonus"])
+    def test_wake_on_no_false_positive(self, phrase):
+        assert voice._WAKE_RE.search(phrase) is None
+
+    @pytest.mark.parametrize("phrase", ["off", "voice off", "turn off"])
+    def test_sleep_off_matches(self, phrase):
+        assert voice._SLEEP_RE.search(phrase) is not None
+
+    @pytest.mark.parametrize("phrase", ["offset", "offline", "coffee"])
+    def test_sleep_off_no_false_positive(self, phrase):
+        assert voice._SLEEP_RE.search(phrase) is None

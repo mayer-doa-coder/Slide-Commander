@@ -28,7 +28,15 @@ _STEP_BLOCKS = 2            # slide by 1 s — inference runs every ~1 s
 _COMMAND_COOLDOWN_S = 1.5   # must exceed step interval (1.0 s) to prevent overlap-window duplicates
 
 _PUNCT_RE = re.compile(r"[^\w\s]")  # strip everything that isn't a word char or space
-_GOTO_SLIDE_RE = re.compile(r"\bgo(?:\s*to)?\s+slide\s+(\d+)\b")
+
+# "slide N" — the canonical shorthand trigger (FR-04-SS).
+_GOTO_SLIDE_RE = re.compile(r"\bslide\s+(\d+)\b")
+
+# Wake-word gate (FR-04-WW): only active when cfg.wake_word is True.
+# "ON" activates, "OFF" deactivates. 30 s idle timeout is a safety net.
+_WAKE_RE  = re.compile(r"\bon\b")
+_SLEEP_RE = re.compile(r"\boff\b")
+_WAKE_TIMEOUT_S = 30.0
 
 # Voice phrase → SlideCommander action.  Multi-word phrases checked via subset match.
 _KEYWORD_MAP: dict[str, str] = {
@@ -46,6 +54,11 @@ _KEYWORD_MAP: dict[str, str] = {
     "pause":     "pause",
     "stop":      "pause",
     "resume":    "pause",
+    "open":      "open",    # enter slide-show mode (FR-04-OS)
+    "present":   "open",    # synonym: "present" / "start presenting"
+    "close":     "close",   # exit slide-show mode
+    "exit":      "close",   # synonym: "exit"
+    "quit":      "close",   # synonym: "quit"
 }
 
 
@@ -141,8 +154,13 @@ def _worker(cfg: Config, on_command: Optional[Callable[[str], None]]) -> None:
 
     buffer: list[np.ndarray] = []
     last_command_time: dict[str, float] = {}
+    is_awake: bool = False        # only relevant when cfg.wake_word is True
+    last_wake_time: float = 0.0
 
-    print("  [VOICE] Listening... (say: next, back, first, last, pause)")
+    if cfg.wake_word:
+        print("  [VOICE] Wake-word mode ON — say 'ON' to activate, 'OFF' to deactivate.")
+    else:
+        print("  [VOICE] Listening... (say: next, back, first, last, pause)")
 
     try:
         with stream:
@@ -172,6 +190,32 @@ def _worker(cfg: Config, on_command: Optional[Callable[[str], None]]) -> None:
                     continue
 
                 print(f'  [VOICE] Heard: "{text}"')
+
+                # ── Wake-word gate (FR-04-WW) ──────────────────────────────
+                if cfg.wake_word:
+                    if not is_awake:
+                        if _WAKE_RE.search(text):
+                            is_awake = True
+                            last_wake_time = time.time()
+                            print("  [VOICE] ON — listening for commands. Say 'OFF' to stop.")
+                        continue  # no dispatch while sleeping
+
+                    # Currently awake — check for explicit OFF
+                    if _SLEEP_RE.search(text):
+                        is_awake = False
+                        print("  [VOICE] OFF — sleeping. Say 'ON' to activate.")
+                        continue
+
+                    # Idle timeout safety net
+                    now = time.time()
+                    if now - last_wake_time > _WAKE_TIMEOUT_S:
+                        is_awake = False
+                        print("  [VOICE] Timed out — sleeping. Say 'ON' to activate.")
+                        continue
+
+                    last_wake_time = time.time()
+                # ── End wake-word gate ──────────────────────────────────────
+
                 _dispatch(text, last_command_time, on_command)
     except Exception:
         print(
